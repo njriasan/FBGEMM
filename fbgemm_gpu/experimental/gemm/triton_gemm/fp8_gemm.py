@@ -2876,7 +2876,7 @@ def get_full_non_persistent_tuning_space():
     # For now we see better perf with num_stages=0 for all gemm configs we care
     # But keep this explicit so that we do not forget we may need to set it to
     # other values in the future
-    num_stage_range = [0]
+    num_stage_range = [0] if torch.version.hip is not None else [2]
     waves_per_eu_range = [0]
     matrix_instr_nonkdim_range = [16, 32]
     kpack_range = [1, 2]
@@ -2913,7 +2913,39 @@ def get_full_non_persistent_tuning_space():
     return configs
 
 
-MATMUL_CONFIGS_NON_PERSISTENT: List[Config] = get_full_non_persistent_tuning_space()
+MATMUL_CONFIGS_NON_PERSISTENT_4_8K_16K = [
+    triton.Config(
+        {
+            "BLOCK_M": 16,
+            "BLOCK_N": 16,
+            "BLOCK_K": 256,
+            "GROUP_M": 1,
+            "SPLIT_K": 1,
+            "waves_per_eu": 8,
+            "matrix_instr_nonkdim": 16,
+            "kpack": 2,
+        },
+        num_warps=2,
+        num_stages=2,
+    ),
+    triton.Config(
+        {
+            "BLOCK_M": 16,
+            "BLOCK_N": 16,
+            "BLOCK_K": 256,
+            "GROUP_M": 1,
+            "SPLIT_K": 1,
+            "waves_per_eu": 0,
+            "matrix_instr_nonkdim": 16,
+            "kpack": 2,
+        },
+        num_warps=2,
+        num_stages=2,
+    ),
+]
+
+# MATMUL_CONFIGS_NON_PERSISTENT: List[Config] = get_full_non_persistent_tuning_space()
+MATMUL_CONFIGS_NON_PERSISTENT = MATMUL_CONFIGS_NON_PERSISTENT_4_8K_16K
 
 
 @triton.autotune(
